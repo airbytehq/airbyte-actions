@@ -3,10 +3,11 @@
 #
 import logging
 
+import anyio
 from actions.environments import with_actions_runner_base
 from typing import List
 from ..models.contexts import GlobalContext, PipelineContext
-from ..models.pipelines import Step, StepResult
+from ..models.steps import Step, StepResult
 from ..reporting.test_report import PipelineTestReport
 from rich.logging import RichHandler
 
@@ -20,8 +21,6 @@ class ActionsRunnerPipeline(Step):
     title = "Actions Runner Pipeline"
 
     async def _run(self) -> List[StepResult]:
-        """
-        """
         actions_runner_base = await with_actions_runner_base(self.context)
         actions_runner_base = self.get_dagger_pipeline(actions_runner_base)
         filtered_repo = self.context.get_repo_dir(
@@ -42,4 +41,4 @@ class ActionsRunnerPipeline(Step):
 
 
 if __name__ == "__main__":
-    run(GLOBAL_CONTEXT)
+    anyio.run(GLOBAL_CONTEXT)

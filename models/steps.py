@@ -11,7 +11,7 @@ from enum import Enum
 from typing import TYPE_CHECKING, ClassVar, List, Optional, Union
 
 import asyncer
-from utils.dagger import with_exit_code, with_stderr, with_stdout
+from utils.dagger_helpers import with_exit_code, with_stderr, with_stdout
 from dagger import Client, Container
 from rich.style import Style
 

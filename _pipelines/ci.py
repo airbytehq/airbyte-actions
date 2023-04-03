@@ -9,7 +9,8 @@ from pathlib import Path
 from typing import List, Tuple, Any
 
 import asyncer
-from .._pipelines import actions_runner
+import anyio
+from .._pipelines.actions_runner import ActionsRunnerPipeline
 from ..models.contexts import GlobalContext
 from ..reporting.test_report import GlobalTestReport
 from ..utils.repo import is_local, get_current_git_branch, get_current_git_revision
@@ -25,8 +26,8 @@ logging.basicConfig(level=logging.INFO, format="%(name)s: %(message)s", datefmt=
 
 logger = logging.getLogger(__name__)
 
-# PASS IN CONFIG VIA CLI 
-async def run(context: GlobalContext, **kwargs) -> GlobalTestReport:
+# PASS IN CONFIG VIA CLI ARGUMENTS
+async def run(context: GlobalContext, **kwargs: dict[str, Any]) -> GlobalTestReport:
 
     ## THIS IS WHERE YOU HAVE SOME CASE SWITCH TO DETERMINE WHICH TASKS TO PUT INTO THE QUEUE
 
@@ -41,7 +42,7 @@ async def run(context: GlobalContext, **kwargs) -> GlobalTestReport:
     async with context:
         async with asyncer.create_task_group() as task_group:
             tasks: list[Any] = [
-                task_group.soonify(actions_runner(context).run)(),
+                task_group.soonify(ActionsRunnerPipeline(context).run)(),
                 ## Pipeline 2 here
                 # pipeline 3 here 
 
@@ -54,4 +55,4 @@ async def run(context: GlobalContext, **kwargs) -> GlobalTestReport:
 
 
 if __name__ == "__main__":
-    run(GLOBAL_CONTEXT)
+    anyio.run(GLOBAL_CONTEXT, backend="asyncio")
