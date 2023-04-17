@@ -3,7 +3,7 @@
 #
 from pathlib import Path
 
-from ..utils.dagger import with_exit_code
+from ..utils.dagger_helpers import with_exit_code
 from dagger import Client, File, Secret
 
 

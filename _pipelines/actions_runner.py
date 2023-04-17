@@ -1,44 +1,53 @@
 #
 # Copyright (c) 2023 Airbyte, Inc., all rights reserved.
 #
+
+from __future__ import annotations
 import logging
 
-import anyio
-from actions.environments import with_actions_runner_base
-from typing import List
-from ..models.contexts import GlobalContext, PipelineContext
-from ..models.steps import Step, StepResult
-from ..reporting.test_report import PipelineTestReport
-from rich.logging import RichHandler
 
-GLOBAL_CONTEXT = GlobalContext()
+
+import anyio
+from .actions.environments import with_actions_runner_base
+from typing import List, TYPE_CHECKING
+
+from src.utils.repo import is_local, get_current_git_branch, get_current_git_revision, get_current_git_repo
+from rich.logging import RichHandler
+from dagger import Container
+
+if TYPE_CHECKING: 
+    from src.models.contexts import GlobalContext, PipelineContext
+    from src.models.pipeline import Pipeline, PipelineResult
+    from src.reporting.test_report import PipelineTestReport
 
 logging.basicConfig(level=logging.INFO, format="%(name)s: %(message)s", datefmt="[%X]", handlers=[RichHandler(rich_tracebacks=True)])
 
 logger = logging.getLogger(__name__)
 
-class ActionsRunnerPipeline(Step):
+class ActionsRunnerPipeline(Pipeline):
     title = "Actions Runner Pipeline"
 
-    async def _run(self) -> List[StepResult]:
-        actions_runner_base = await with_actions_runner_base(self.context)
-        actions_runner_base = self.get_dagger_pipeline(actions_runner_base)
-        filtered_repo = self.context.get_repo_dir(
+    async def _run(self) -> PipelineResult:
+        actions_runner_base = with_actions_runner_base(self.pipeline_context)
+        pipeline = self.get_dagger_pipeline(actions_runner_base)
+        if isinstance(pipeline, Container):
+            actions_runner_base = pipeline
+        filtered_repo = self.pipeline_context.get_repo_dir(
             include=[
-                str(self.context.connector.code_directory),
-                str(self.context.connector.documentation_file_path),
-                str(self.context.connector.icon_path),
-                "airbyte-config/init/src/main/resources/seed/source_definitions.yaml",
-                "airbyte-config/init/src/main/resources/seed/destination_definitions.yaml",
+                "."
             ],
         )
         airbyte_runner_image = (
             actions_runner_base.with_mounted_directory("/airbyte", filtered_repo)
             .with_workdir("/airbyte")
-            .with_exec(["run-qa-checks", f"connectors/{self.context.connector.technical_name}"])
         )
-        return [await self.get_step_result(airbyte_runner_image)]
+        return await self.get_pipeline_result(airbyte_runner_image)
 
 
 if __name__ == "__main__":
-    anyio.run(GLOBAL_CONTEXT)
+    GLOBAL_CONTEXT = GlobalContext(is_local = is_local()
+                               , git_branch = get_current_git_branch()
+                               , git_revision = get_current_git_revision()
+                               , git_repo_url = get_current_git_repo())
+
+    anyio.run(ActionsRunnerPipeline(GLOBAL_CONTEXT)._run)

@@ -3,16 +3,15 @@
 #
 
 """This modules groups functions made to create reusable environments packaged in dagger containers."""
+from __future__ import annotations
+from typing import List, TYPE_CHECKING
 
-from typing import List, Optional
-
-from ci_connector_ops.pipelines.contexts import ConnectorTestContext
-from ...utils.repo import get_file_contents
-from dagger import CacheSharingMode, CacheVolume, Container, Directory, Secret
+from dagger import CacheSharingMode, CacheVolume, Container, Client
 
 PYPROJECT_TOML_FILE_PATH = "pyproject.toml"
 
-CI_CONNECTOR_OPS_SOURCE_PATH = "tools/ci_connector_ops"
+if TYPE_CHECKING:
+    from src.models.contexts import PipelineContext
 
 
 def with_actions_runner_base(context: PipelineContext, runner_image_name: str = "summerwind/actions-runner:ubuntu-22.04") -> Container:
@@ -28,14 +27,13 @@ def with_actions_runner_base(context: PipelineContext, runner_image_name: str = 
     Returns:
         Container: The python base environment container.
     """
-    if not python_image_name.startswith("python:3"):
-        raise ValueError("You have to use a python image to build the python base environment")
+    assert isinstance(context.dagger_client, Client)
     pip_cache: CacheVolume = context.dagger_client.cache_volume("pip_cache")
+    
     return (
         context.dagger_client.container()
-        .from_(python_image_name)
+        .from_(runner_image_name)
         .with_mounted_cache("/root/.cache/pip", pip_cache, sharing=CacheSharingMode.SHARED)
-        .with_mounted_directory("/tools", context.get_repo_dir("tools", include=["ci_credentials", "ci_common_utils"], exclude=[".venv"]))
         .with_exec(["pip", "install", "--upgrade", "pip"])
     )
 
