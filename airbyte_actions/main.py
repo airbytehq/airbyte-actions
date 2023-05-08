@@ -1,31 +1,29 @@
+import structlog
+from aircmd.models import DeveloperPlugin
 from clidantic import Parser
 
-actions = Parser(name="actions")
-@actions.command(help_message="command 1 help message", config_param_name = "config")
-def command1():
-    print("Command 1 executed")
+logger = structlog.get_logger()
 
-@actions.command(help_message="command 2 help message", config_param_name = "config")
-def command2():
-    print("Command 2 executed")
-    
-if __name__ == '__main__':
-    actions()
+class AirbyteActionsPlugin(DeveloperPlugin):
+    actions = Parser(name="actions")
 
-
-from my_application.models import DeveloperPlugin
-from clidantic import Parser
-
-class MyPlugin(DeveloperPlugin):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.name = Parser(name="myplugin")
+        self.name = "actions"
 
+    @actions.command(help_message="build", config_param_name = "config")
     def build(self):
+        logger.info("build")
         # Implementation of the "build" command
 
+    @actions.command(help_message="test", config_param_name = "config")
     def test(self):
+        logger.info("test")
         # Implementation of the "test" command
 
+    @actions.command(help_message="publish", config_param_name = "config")
     def publish(self):
+        logger.info("publish")
         # Implementation of the "publish" command
+
+actions_plugin = AirbyteActionsPlugin(name="myplugin", plugin_type="application")
